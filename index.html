@@ -1,0 +1,401 @@
+<!DOCTYPE ahtml>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>xkitz7 | [xkitz@q]</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Lexend Font (Light 300, Regular 400, Black 900) -->
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;900&display=swap" rel="stylesheet">
+    <style>
+        /* Define CSS Variables for Theming - Pure B&W Only */
+        :root {
+            /* Default: Dark Mode */
+            --bg-primary: #000000; 
+            --text-main: #FFFFFF;
+            --accent-color: #FFFFFF;
+            --cursor-color: #FFFFFF;
+        }
+
+        /* Light Mode Overrides */
+        [data-theme='light'] {
+            --bg-primary: #FFFFFF;
+            --text-main: #000000;
+            --accent-color: #000000;
+            --cursor-color: #000000;
+        }
+
+        /* Apply dynamic colors and monospace font globally */
+        body {
+            background-color: var(--bg-primary);
+            min-height: 100vh;
+            color: var(--text-main);
+            font-family: monospace;
+            transition: background-color 0.3s, color 0.3s;
+            overflow-y: hidden; /* Hide default scrollbar for immersive feel */
+            cursor: none; /* Hide default cursor */
+        }
+
+        /* Fixed Terminal Header (Navbar) */
+        .terminal-header {
+            background-color: var(--bg-primary);
+            box-shadow: none;
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        /* Custom selection style */
+        ::selection {
+            background-color: var(--text-main); 
+            color: var(--bg-primary);
+        }
+
+        /* Navigation Links Hover (using accent-color as text color) */
+        .terminal-header a {
+            color: var(--accent-color);
+            padding: 8px;
+            transition: all 0.2s ease;
+        }
+        .terminal-header a:hover {
+            color: var(--bg-primary);
+            background-color: var(--accent-color);
+            border-radius: 4px;
+        }
+
+        /* Theme Toggle Button Hover */
+        .theme-toggle-btn {
+            color: var(--text-main);
+            border: 1px solid var(--accent-color);
+            background-color: var(--bg-primary);
+            transition: all 0.2s ease;
+        }
+        .theme-toggle-btn:hover {
+            color: var(--bg-primary);
+            background-color: var(--accent-color);
+        }
+
+        /* Interactive Terminal Specific Styles */
+        #terminal-output {
+            padding: 1rem;
+            white-space: pre-wrap;
+            height: calc(100vh - 100px); /* Full height minus header */
+            overflow-y: auto;
+            /* Scrollbar styling for B&W theme */
+            scrollbar-color: var(--accent-color) var(--bg-primary);
+            scrollbar-width: thin;
+        }
+        #terminal-output::-webkit-scrollbar {
+            width: 8px;
+        }
+        #terminal-output::-webkit-scrollbar-thumb {
+            background-color: var(--accent-color);
+            border: 1px solid var(--bg-primary);
+        }
+        #terminal-output::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        /* Blinking cursor animation */
+        .cursor {
+            background-color: var(--cursor-color);
+            display: inline-block;
+            width: 8px;
+            height: 1em; /* Adjust height to match text line height */
+            animation: blink 1s step-end infinite;
+            margin-left: 2px;
+            vertical-align: text-bottom;
+        }
+        @keyframes blink {
+            from, to { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .command-input-line {
+            display: flex;
+            align-items: center;
+        }
+    </style>
+    <script>
+        // Data for terminal commands
+        const terminalData = {
+            intro: `
+Welcome to xkitz7's website.
+Type 'help' to see available commands.
+`,
+            whoami: `
+> HI, I'm xkitz7
+I'm a teenager who has self-taught english, tech, and neuroscience. I'm from Saudi Arabia and I'm currently working on an OS.
+— Execution Status: Curiosity drives creation.
+`,
+            about: `
+# About Me Module
+
+I leverage my self-taught knowledge across various domains to tackle complex projects, merging technology with conceptual understanding of the brain and human language. My self-directed learning approach ensures I remain adaptable and current with emerging technical stacks.
+`,
+            projects: `
+Type: KERNEL | Status: ALPHA
+  - The OS Initiative (WIP): Developing a custom operating system from the ground up, focusing on efficiency and security.
+
+Type: UX-RESEARCH | Status: V1.0
+  - Neuro-Tech Bridge: Applying neuroscience concepts to optimize user experience in software design.
+`,
+            contact: `
+Reach out for collaborations or just to chat about tech and science!
+
+Email: contact@xkitz7.dev
+GitHub: /xkitz7
+`,
+            cat: `
+/usr/bin/show-pet.sh
+🐈
+[Success] cat :d initiated. Process finished.
+`,
+            help: `
+Available Commands:
+  - whoami .......... Displays name and bio.
+  - cat about.txt ... Detailed information on skills and domains.
+  - ls -l projects/ . Lists current and featured projects.
+  - mail xkitz7 ..... Shows contact details.
+  - /cat-d.sh ....... Initiates pet protocol.
+  - clear ........... Clears the terminal output.
+  - help ............ Shows this message.
+`,
+            notFound: (cmd) => `[ERROR] Command not found: ${cmd}. Type 'help' for guidance.`,
+            prompt: "[xkitz@q]>",
+            promptClass: "style='color: var(--accent-color);'",
+            outputClass: "style='color: var(--text-main);'",
+            accentClass: "style='color: var(--accent-color);'"
+        };
+
+        // State variables
+        let history = [];
+        let historyIndex = -1;
+        let commandInput = "";
+
+        // DOM elements
+        let terminalOutput;
+        let inputLine;
+
+        // --- Theme Toggle Logic (Kept from previous version) ---
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        mono: ['monospace'], 
+                        sans: ['Lexend', 'sans-serif'],
+                    },
+                }
+            }
+        }
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+
+            // --- Terminal Init ---
+            terminalOutput = document.getElementById('terminal-output');
+            document.addEventListener('keydown', handleKeydown);
+            // Focus on the body (our "terminal" area) to capture input
+            document.body.focus(); 
+            
+            // Render initial content: Intro, then execute whoami, then render input
+            printOutput(terminalData.intro);
+            executeCommand('whoami', false); // Execute whoami silently (no history entry)
+            renderInputLine();
+        });
+
+        // --- Terminal Core Logic ---
+
+        /**
+         * Renders the current input line with the prompt, text, and cursor.
+         */
+        function renderInputLine() {
+            if (!inputLine) {
+                inputLine = document.createElement('div');
+                inputLine.className = 'command-input-line';
+                terminalOutput.appendChild(inputLine);
+            }
+            // Update the inner HTML of the input line
+            inputLine.innerHTML = `
+                <span ${terminalData.promptClass}>${terminalData.prompt}</span> 
+                <span ${terminalData.outputClass}>${commandInput}</span>
+                <span class="cursor"></span>
+            `;
+            // Scroll to the bottom of the terminal output
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        /**
+         * Adds a text block to the terminal output.
+         * @param {string} text The text content to display.
+         * @param {boolean} isCommand If true, prints the prompt before the text (for command history).
+         * @param {boolean} suppressHistory If true, doesn't print the prompt (used for initial 'whoami').
+         */
+        function printOutput(text, isCommand = false, suppressHistory = false) {
+            const outputBlock = document.createElement('pre');
+            outputBlock.className = 'whitespace-pre-wrap';
+            
+            if (isCommand && !suppressHistory) {
+                outputBlock.innerHTML = `<span ${terminalData.promptClass}>${terminalData.prompt}</span> <span ${terminalData.outputClass}>${text}</span>`;
+            } else {
+                outputBlock.innerHTML = `<span ${terminalData.outputClass}>${text}</span>`;
+            }
+
+            // Insert the new output block before the current input line
+            if (inputLine) {
+                terminalOutput.insertBefore(outputBlock, inputLine);
+            } else {
+                terminalOutput.appendChild(outputBlock);
+            }
+        }
+
+        /**
+         * Processes the entered command.
+         * @param {string} command The command string to execute.
+         * @param {boolean} isUserTyped If true, treats it as a user-typed command (logs to history, prints prompt).
+         */
+        function executeCommand(command, isUserTyped = true) {
+            command = command.trim();
+            
+            if (isUserTyped) {
+                if (command === "") return;
+
+                // Log command to history and reset index
+                history.push(command);
+                historyIndex = history.length;
+                
+                // Print command to output area
+                printOutput(command, true);
+            }
+            
+            // Execute based on command
+            let output = "";
+            const lowerCommand = command.toLowerCase();
+
+            switch (lowerCommand) {
+                case 'whoami':
+                    output = terminalData.whoami;
+                    break;
+                case 'cat about.txt':
+                case 'about':
+                    output = terminalData.about;
+                    break;
+                case 'ls -l projects/':
+                case 'projects':
+                    output = `\n${terminalData.projects}\n`;
+                    break;
+                case 'mail xkitz7':
+                case 'contact':
+                    output = terminalData.contact;
+                    break;
+                case '/cat-d.sh':
+                case 'cat :d':
+                    output = `\n${terminalData.cat}\n`;
+                    break;
+                case 'help':
+                    output = terminalData.help;
+                    break;
+                case 'clear':
+                    terminalOutput.innerHTML = '';
+                    inputLine = null; // Forces re-creation of input line
+                    break;
+                default:
+                    output = terminalData.notFound(command);
+                    break;
+            }
+
+            if (output) {
+                // Suppress prompt printing only for the initial, silent 'whoami' command
+                printOutput(output, false, !isUserTyped); 
+            }
+            
+            commandInput = ""; // Reset current input buffer
+            if (!inputLine) renderInputLine(); // Re-render if 'clear' was used
+        }
+
+        /**
+         * Handles all keyboard input for the terminal.
+         */
+        function handleKeydown(event) {
+            // Check if focus is on the body (our "terminal" area)
+            if (event.target !== document.body && event.target.tagName !== 'BUTTON' && event.target.tagName !== 'A') return;
+
+            const key = event.key;
+
+            if (key === 'Enter') {
+                event.preventDefault(); // Prevent default newline behavior
+                executeCommand(commandInput);
+                renderInputLine();
+            } else if (key === 'Backspace') {
+                event.preventDefault();
+                commandInput = commandInput.slice(0, -1);
+                renderInputLine();
+            } else if (key === 'ArrowUp') {
+                event.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    commandInput = history[historyIndex];
+                    renderInputLine();
+                }
+            } else if (key === 'ArrowDown') {
+                event.preventDefault();
+                if (historyIndex < history.length - 1) {
+                    historyIndex++;
+                    commandInput = history[historyIndex];
+                } else {
+                    historyIndex = history.length;
+                    commandInput = "";
+                }
+                renderInputLine();
+            } else if (key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+                // Allows alphanumeric characters and symbols
+                commandInput += key;
+                renderInputLine();
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <!-- Fixed Terminal Header (formerly Navbar) -->
+    <nav class="fixed top-0 left-0 right-0 z-50 py-4 px-6 md:px-12 terminal-header">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <!-- Logo/Name: Terminal path prefix -->
+            <div class="text-xl font-normal tracking-wider" style="color: var(--accent-color);">
+                [xkitz@q]<span style="color: var(--text-main);">></span>
+            </div>
+
+            <!-- Navigation Links and Theme Toggle -->
+            <div class="flex items-center space-x-4 sm:space-x-8 text-sm font-medium">
+                <!-- Links now trigger terminal commands -->
+                <a href="javascript:void(0)" onclick="executeCommand('about'); renderInputLine();">/about</a>
+                <a href="javascript:void(0)" onclick="executeCommand('projects'); renderInputLine();">/projects</a>
+                <a href="javascript:void(0)" onclick="executeCommand('contact'); renderInputLine();">/contact</a>
+                <a href="javascript:void(0)" onclick="executeCommand('/cat-d.sh'); renderInputLine();">/cat-d.sh</a>
+
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleTheme()" class="p-2 rounded-full theme-toggle-btn" aria-label="Toggle dark/light mode">
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Full-screen Interactive Terminal -->
+    <main class="w-full h-screen pt-20">
+        <div id="terminal-output" tabindex="0">
+            <!-- Output and the current command line will be dynamically inserted here by JavaScript -->
+        </div>
+    </main>
+
+</body>
+</html>
