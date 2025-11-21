@@ -1,8 +1,8 @@
-<!DOCTYPE ahtml>
+<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>xkitz7 | [xkitz@q]</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -34,7 +34,7 @@
             font-family: monospace;
             transition: background-color 0.3s, color 0.3s;
             overflow-y: hidden; /* Hide default scrollbar for immersive feel */
-            cursor: none; /* Hide default cursor */
+            cursor: auto; /* Start with visible cursor */
         }
 
         /* Fixed Terminal Header (Navbar) */
@@ -139,6 +139,64 @@
             display: flex;
             align-items: center;
         }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .terminal-header {
+                padding: 0.5rem;
+            }
+            
+            .terminal-header .flex {
+                flex-wrap: wrap;
+                justify-content: space-between;
+            }
+            
+            .terminal-header a {
+                padding: 4px 6px;
+                font-size: 0.875rem;
+            }
+            
+            #terminal-output {
+                padding: 0.5rem;
+                height: calc(100vh - 80px);
+            }
+            
+            #prompt-logo {
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .terminal-header a {
+                padding: 3px 4px;
+                font-size: 0.75rem;
+            }
+            
+            .theme-toggle-btn {
+                padding: 2px 6px;
+                font-size: 0.75rem;
+            }
+        }
+        
+        /* Cursor toggle notification */
+        .cursor-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--accent-color);
+            color: var(--bg-primary);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .cursor-notification.show {
+            opacity: 1;
+        }
     </style>
     <script>
         // Data for terminal commands
@@ -196,6 +254,7 @@ Available Commands:
         let history = [];
         let historyIndex = -1;
         let commandInput = "";
+        let cursorHidden = false;
 
         // DOM elements
         let terminalOutput;
@@ -238,7 +297,51 @@ Available Commands:
             updateThemeButtonText(newTheme); // Update text after theme change
         }
 
+        // --- Cursor Toggle Logic ---
+        function toggleCursor() {
+            cursorHidden = !cursorHidden;
+            document.body.style.cursor = cursorHidden ? 'none' : 'auto';
+            
+            // Show notification
+            const notification = document.getElementById('cursor-notification');
+            if (notification) {
+                notification.textContent = cursorHidden ? 'Cursor hidden (Press Q to show)' : 'Cursor visible (Press Q to hide)';
+                notification.classList.add('show');
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 2000);
+            }
+        }
+
+        // --- Language Detection ---
+        function detectLanguage() {
+            const userLang = navigator.language || navigator.userLanguage;
+            const langCode = userLang.split('-')[0]; // Get base language code
+            
+            // Add RTL support for Arabic and other RTL languages
+            if (['ar', 'he', 'fa', 'ur'].includes(langCode)) {
+                document.documentElement.dir = 'rtl';
+                document.documentElement.lang = langCode;
+                
+                // Adjust layout for RTL
+                const terminalOutput = document.getElementById('terminal-output');
+                if (terminalOutput) {
+                    terminalOutput.style.textAlign = 'right';
+                }
+            } else {
+                document.documentElement.dir = 'ltr';
+                document.documentElement.lang = langCode;
+            }
+            
+            return langCode;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            // Detect and set language
+            detectLanguage();
+            
+            // Set theme
             const savedTheme = localStorage.getItem('theme');
             let initialTheme = 'dark';
             if (savedTheme) {
@@ -379,6 +482,13 @@ Available Commands:
 
             const key = event.key;
 
+            // Handle Q key for cursor toggle
+            if (key.toLowerCase() === 'q' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+                event.preventDefault();
+                toggleCursor();
+                return;
+            }
+            
             if (key === 'Enter') {
                 event.preventDefault(); // Prevent default newline behavior
                 executeCommand(commandInput);
@@ -444,6 +554,9 @@ Available Commands:
             <!-- Output and the current command line will be dynamically inserted here by JavaScript -->
         </div>
     </main>
+    
+    <!-- Cursor toggle notification -->
+    <div id="cursor-notification" class="cursor-notification"></div>
 
 </body>
 </html>
