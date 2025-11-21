@@ -50,6 +50,31 @@
             color: var(--bg-primary);
         }
 
+        /* --- PROMPT LOGO INVERSION STYLES --- */
+        #prompt-logo {
+            transition: all 0.1s ease;
+            padding: 4px 6px;
+            border-radius: 4px;
+            /* Initial state color settings */
+            color: var(--accent-color); /* [xkitz@q] text color */
+            text-decoration: none; 
+            cursor: pointer;
+        }
+        #prompt-arrow {
+            /* Initial state color settings */
+            color: var(--text-main); /* > text color */
+            transition: all 0.1s ease;
+        }
+
+        /* Hover State: Invert colors */
+        #prompt-logo:hover {
+            color: var(--bg-primary); /* [xkitz@q] flips to background color */
+            background-color: var(--accent-color); /* Background flips to accent color */
+        }
+        #prompt-logo:hover #prompt-arrow {
+            color: var(--bg-primary); /* > flips to background color */
+        }
+
         /* Navigation Links Hover (using accent-color as text color) */
         .terminal-header a {
             color: var(--accent-color);
@@ -62,12 +87,13 @@
             border-radius: 4px;
         }
 
-        /* Theme Toggle Button Hover */
+        /* Theme Toggle Button Hover (Now uses padding for text) */
         .theme-toggle-btn {
             color: var(--text-main);
             border: 1px solid var(--accent-color);
             background-color: var(--bg-primary);
             transition: all 0.2s ease;
+            text-transform: uppercase;
         }
         .theme-toggle-btn:hover {
             color: var(--bg-primary);
@@ -175,7 +201,7 @@ Available Commands:
         let terminalOutput;
         let inputLine;
 
-        // --- Theme Toggle Logic (Kept from previous version) ---
+        // --- Theme Toggle Logic ---
         tailwind.config = {
             theme: {
                 extend: {
@@ -186,17 +212,38 @@ Available Commands:
                 }
             }
         }
+        
+        function getThemeToggleButton() {
+            return document.getElementById('theme-toggle');
+        }
+
+        /**
+         * Updates the text content of the theme toggle button.
+         * Displays "light" if the current theme is dark, and "dark" if the current theme is light.
+         */
+        function updateThemeButtonText(theme) {
+            const button = getThemeToggleButton();
+            if (button) {
+                // If current theme is dark, the button should offer "light" mode (and vice versa)
+                button.textContent = theme === 'dark' ? 'light' : 'dark';
+            }
+        }
+        
         function toggleTheme() {
             const html = document.documentElement;
             const currentTheme = html.getAttribute('data-theme');
             const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
             html.setAttribute('data-theme', newTheme);
             localStorage.setItem('theme', newTheme);
+            updateThemeButtonText(newTheme); // Update text after theme change
         }
+
         document.addEventListener('DOMContentLoaded', () => {
             const savedTheme = localStorage.getItem('theme');
+            let initialTheme = 'dark';
             if (savedTheme) {
                 document.documentElement.setAttribute('data-theme', savedTheme);
+                initialTheme = savedTheme;
             }
 
             // --- Terminal Init ---
@@ -204,6 +251,9 @@ Available Commands:
             document.addEventListener('keydown', handleKeydown);
             // Focus on the body (our "terminal" area) to capture input
             document.body.focus(); 
+            
+            // Update button text on load
+            updateThemeButtonText(initialTheme); 
             
             // Render initial content: Intro, then execute whoami, then render input
             printOutput(terminalData.intro);
@@ -367,10 +417,10 @@ Available Commands:
     <!-- Fixed Terminal Header (formerly Navbar) -->
     <nav class="fixed top-0 left-0 right-0 z-50 py-4 px-6 md:px-12 terminal-header">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <!-- Logo/Name: Terminal path prefix -->
-            <div class="text-xl font-normal tracking-wider" style="color: var(--accent-color);">
-                [xkitz@q]<span style="color: var(--text-main);">></span>
-            </div>
+            <!-- Logo/Name: Terminal path prefix, now clickable to reload, with new ID for hover styling -->
+            <a id="prompt-logo" href="javascript:void(0)" onclick="window.location.reload()" class="text-xl font-normal tracking-wider">
+                [xkitz@q]<span id="prompt-arrow">></span>
+            </a>
 
             <!-- Navigation Links and Theme Toggle -->
             <div class="flex items-center space-x-4 sm:space-x-8 text-sm font-medium">
@@ -381,10 +431,8 @@ Available Commands:
                 <a href="javascript:void(0)" onclick="executeCommand('/cat-d.sh'); renderInputLine();">/cat-d.sh</a>
 
                 <!-- Theme Toggle Button -->
-                <button onclick="toggleTheme()" class="p-2 rounded-full theme-toggle-btn" aria-label="Toggle dark/light mode">
-                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
-                    </svg>
+                <button id="theme-toggle" onclick="toggleTheme()" class="px-3 py-1 theme-toggle-btn text-sm" aria-label="Toggle dark/light mode">
+                    <!-- Text is dynamically set by JavaScript -->
                 </button>
             </div>
         </div>
